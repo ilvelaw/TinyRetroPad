@@ -1896,6 +1896,22 @@ CopyIcoName:
     je      MainRet
     
     mov     hMain, eax
+    mov     eax, wc.hIcon
+    test    eax, eax
+    je      NoAppIcon
+    push    eax                 ; keep handle
+    push    eax                 ; lParam = HICON
+    push    1                   ; wParam = ICON_BIG
+    push    80h                 ; WM_SETICON
+    push    hMain
+    call    [_imp__SendMessageA@16]
+    pop     eax
+    push    eax
+    push    0                   ; ICON_SMALL
+    push    80h
+    push    hMain
+    call    [_imp__SendMessageA@16]
+NoAppIcon:
 
     ; load file and set title
     call    LoadStartupFile
