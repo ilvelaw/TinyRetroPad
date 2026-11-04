@@ -205,6 +205,8 @@ EXTERN _imp__GetDlgItemInt@16      :PTR ; read Go To line number
 EXTERN _imp__EndDialog@8           :PTR ; close Go To dialog
 EXTERN _imp__SetFocus@4            :PTR ; focus edit control after commands
 EXTERN _imp__ExitProcess@4         :PTR ; terminate process cleanly
+EXTERN _imp__GetModuleFileNameA@12 :PTR
+EXTERN _imp__LoadImageA@24         :PTR
 
 IF FEAT_LINENUMBERS
 EXTERN _imp__BeginPaint@8          :PTR ; begin gutter paint
@@ -226,6 +228,7 @@ RichDll     db "Msftedit",0         ; Rich Edit DLL (no ext saves those bytes)
 EditClass   db "RICHEDIT50W",0      ; modern Rich Edit control from WinAPI
 SaveText    db "Save",0             ; button added to system menu
 EmptyText   db 0
+IcoName db "trp.ico",0
 
 hMain       dd 0                    ; main window handle
 hEdit       dd 0                    ; EDIT control handle
@@ -1825,6 +1828,45 @@ MainEntry proc NEAR
     mov     eax, hInstance
     mov     wc.hInstance, eax
     mov     wc.lpszClassName, OFFSET ClassName
+
+    ; TitleBuf <- full path of this exe
+    push    MAX_TITLE
+    push    OFFSET TitleBuf
+    push    NULL
+    call    [_imp__GetModuleFileNameA@12]
+
+    ; ebx -> character after the last backslash (the filename)
+    mov     esi, OFFSET TitleBuf
+    mov     ebx, esi
+FindIcoTail:
+    mov     al, [esi]
+    test    al, al
+    je      GotIcoTail
+    cmp     al, '\'
+    jne     NextIcoChar
+    lea     ebx, [esi+1]
+NextIcoChar:
+    inc     esi
+    jmp     FindIcoTail
+GotIcoTail:
+    mov     esi, OFFSET IcoName
+CopyIcoName:
+    mov     al, [esi]
+    mov     [ebx], al
+    inc     esi
+    inc     ebx
+    test    al, al
+    jne     CopyIcoName
+
+    ; LoadImageA(NULL, TitleBuf, IMAGE_ICON, 0, 0, LR_LOADFROMFILE)
+    push    10h                 ; LR_LOADFROMFILE
+    push    0                   ; cy
+    push    0                   ; cx
+    push    1                   ; IMAGE_ICON
+    push    OFFSET TitleBuf
+    push    NULL
+    call    [_imp__LoadImageA@24]
+    mov     wc.hIcon, eax
 
     ; register window class
     lea     eax, wc
